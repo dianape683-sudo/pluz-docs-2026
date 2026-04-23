@@ -365,8 +365,15 @@ td{padding:7px 10px;font-size:12px;vertical-align:middle}
 
   <!-- DASHBOARD -->
   <div class="page" id="page-dashboard">
-    <div class="page-title">Dashboard general</div>
-    <div class="page-sub">Pluz Energía Perú S.A.A. — Planificación Documental 2026</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:4px">
+      <div>
+        <div class="page-title">Dashboard general</div>
+        <div class="page-sub">Pluz Energía Perú S.A.A. — Planificación Documental 2026</div>
+      </div>
+      <button class="btn btn-blue" onclick="actualizarTodosDatos()" id="btn-actualizar">
+        🔄 Actualizar datos de todas las unidades
+      </button>
+    </div>
     <div class="kpi-grid">
       <div class="kpi"><div class="kpi-label">Docs vigentes</div><div class="kpi-val" id="kpi-total">0</div><div class="kpi-sub">en planificación</div></div>
       <div class="kpi y"><div class="kpi-label">Avance global</div><div class="kpi-val" id="kpi-avance">0%</div><div class="kpi-sub">docs revisados</div></div>
@@ -642,6 +649,24 @@ let IS_ADMIN = false;
 let CUR_GER = '', CUR_UNI = '';
 let reporteData = {};
 
+function parseFecha(val){
+  if(!val) return '';
+  const s = String(val).trim();
+  // Already in YYYY-MM-DD format
+  if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0,10);
+  // Try parsing as date
+  try{
+    const d = new Date(s);
+    if(!isNaN(d.getTime())){
+      const y=d.getFullYear();
+      if(y>2000 && y<2100){
+        return y+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      }
+    }
+  }catch(e){}
+  return '';
+}
+
 const COLORS = {Actualizar:'#3D5BA9',Mantener:'#3A9E5F',Transferir:'#e87722',Eliminar:'#c0392b',Nuevo:'#5f4ab7',Pendiente:'#ccc'};
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
@@ -687,7 +712,7 @@ async function cargarPlanDesdeSheets(ger, uni){
       const data = await res.json();
       if(data.ok && data.data){
         data.data.forEach(r=>{
-          plan[r.cod]={accion:r.accion||'Pendiente',fechaProg:r.fechaProg?String(r.fechaProg).trim().substring(0,10):'',obs:String(r.obs||'')};
+          plan[r.cod]={accion:r.accion||'Pendiente',fechaProg:parseFecha(r.fechaProg),obs:String(r.obs||'')};
         });
         showToast('Planificación cargada correctamente');
       }
@@ -715,18 +740,41 @@ function launchApp(){
   }
 }
 
+async function actualizarTodosDatos(){
+  const btn = document.getElementById('btn-actualizar');
+  if(btn){ btn.textContent='⏳ Cargando...'; btn.disabled=true; }
+  document.getElementById('saving-overlay').classList.add('show');
+  await cargarTodasLasPlanificaciones();
+  document.getElementById('saving-overlay').classList.remove('show');
+  if(btn){ btn.textContent='🔄 Actualizar datos de todas las unidades'; btn.disabled=false; }
+  renderDash();
+  showToast('Datos actualizados correctamente');
+}
+
 async function cargarTodasLasPlanificaciones(){
   if(SHEETS_URL==='REEMPLAZAR_CON_TU_URL_DE_APPS_SCRIPT') return;
   try {
+    // Load planificaciones
     const url = SHEETS_URL+'?action=obtener_planificacion&gerencia=&unidad=';
     const res = await fetch(url, {mode:'cors'});
     const data = await res.json();
     if(data.ok && data.data){
       data.data.forEach(r=>{
-        plan[r.cod]={accion:r.accion||'Pendiente',fechaProg:r.fechaProg?String(r.fechaProg).trim().substring(0,10):'',obs:String(r.obs||'')};
+        plan[r.cod]={accion:r.accion||'Pendiente',fechaProg:parseFecha(r.fechaProg),obs:String(r.obs||'')};
       });
     }
-  } catch(e){ console.log('Error cargando todas las planificaciones:', e); }
+    // Load nuevos documentos
+    const url2 = SHEETS_URL+'?action=obtener_nuevos&gerencia=&unidad=';
+    const res2 = await fetch(url2, {mode:'cors'});
+    const data2 = await res2.json();
+    if(data2.ok && data2.data){
+      // Clear existing nuevos and replace with saved ones
+      nuevos.length = 0;
+      data2.data.forEach(n=>{
+        nuevos.push({titulo:n.titulo,tipo:n.tipo,gerencia:n.gerencia,unidad:n.unidad,fecha:parseFecha(n.fecha),just:n.just||''});
+      });
+    }
+  } catch(e){ console.log('Error cargando datos:', e); }
 }
 function doLogout(){
   document.getElementById('screen-app').style.display='none';
