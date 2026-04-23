@@ -135,6 +135,7 @@ td{padding:7px 10px;font-size:12px;vertical-align:middle}
   border:1.5px solid var(--border);background:#fff;color:var(--text);width:100%;cursor:pointer;font-weight:500}
 .act-Actualizar{border-color:var(--blue);background:var(--blue-light);color:var(--blue-dark)}
 .act-Mantener{border-color:var(--green);background:var(--green-light);color:var(--green)}
+.act-Transferir{border-color:#e87722;background:#fef3ea;color:#b75a10}
 .act-Eliminar{border-color:var(--red);background:var(--red-light);color:var(--red)}
 .act-Pendiente{color:var(--text3)}
 .date-input{font-size:11px;height:30px;padding:0 6px;border-radius:var(--radius-sm);
@@ -288,7 +289,7 @@ td{padding:7px 10px;font-size:12px;vertical-align:middle}
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-purple" onclick="openNuevoModal()">+ Nuevo documento</button>
-        <button class="btn btn-green" onclick="exportCSV()">Exportar CSV</button>
+        
         <button class="btn btn-yellow" onclick="guardarPlanificacion()">Guardar planificación</button>
       </div>
     </div>
@@ -328,6 +329,7 @@ td{padding:7px 10px;font-size:12px;vertical-align:middle}
         <option value="Pendiente">Pendiente</option>
         <option value="Actualizar">Actualizar</option>
         <option value="Mantener">Mantener</option>
+        <option value="Transferir">Transferir</option>
         <option value="Eliminar">Eliminar</option>
       </select>
       <select id="sel-tipo-f" onchange="renderPlanTable()" style="min-width:160px">
@@ -438,7 +440,7 @@ td{padding:7px 10px;font-size:12px;vertical-align:middle}
         <div class="page-title">Resumen general 2026</div>
         <div class="page-sub">Consolidado de planificación documental por área</div>
       </div>
-      <button class="btn btn-green" onclick="exportResumen()">Exportar CSV</button>
+      
     </div>
     <div class="res-grid">
       <div class="res-card"><div class="res-num" id="res-act">0</div><div class="res-lbl">Para actualizar</div></div>
@@ -471,11 +473,28 @@ td{padding:7px 10px;font-size:12px;vertical-align:middle}
             <th>Gerencia</th><th>Unidad</th><th>Total</th>
             <th style="color:var(--blue)">Actualizar</th>
             <th style="color:var(--green)">Mantener</th>
+            <th style="color:#e87722">Transferir</th>
             <th style="color:var(--red)">Eliminar</th>
             <th style="color:var(--purple)">Nuevos</th>
             <th>Pendientes</th><th style="min-width:110px">Avance</th>
           </tr></thead>
           <tbody id="resumen-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Nuevos documentos propuestos -->
+    <div id="nuevos-resumen-section" style="display:none;margin-top:20px" class="table-wrap">
+      <div class="table-head">
+        <div class="table-head-left" style="color:var(--purple)">Nuevos documentos propuestos</div>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th>Gerencia</th><th>Unidad</th><th>Título</th>
+            <th style="width:150px">Tipo</th><th style="width:115px">Fecha prog.</th><th>Justificación</th>
+          </tr></thead>
+          <tbody id="nuevos-resumen-tbody"></tbody>
         </table>
       </div>
     </div>
@@ -623,7 +642,7 @@ let IS_ADMIN = false;
 let CUR_GER = '', CUR_UNI = '';
 let reporteData = {};
 
-const COLORS = {Actualizar:'#3D5BA9',Mantener:'#3A9E5F',Eliminar:'#c0392b',Nuevo:'#5f4ab7',Pendiente:'#ccc'};
+const COLORS = {Actualizar:'#3D5BA9',Mantener:'#3A9E5F',Transferir:'#e87722',Eliminar:'#c0392b',Nuevo:'#5f4ab7',Pendiente:'#ccc'};
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
 function getP(cod){ return plan[cod]||{accion:'Pendiente',fechaProg:'',obs:''}; }
@@ -664,12 +683,13 @@ async function cargarPlanDesdeSheets(ger, uni){
   try {
     if(SHEETS_URL !== 'REEMPLAZAR_CON_TU_URL_DE_APPS_SCRIPT'){
       const url = `${SHEETS_URL}?action=obtener_planificacion&gerencia=${encodeURIComponent(ger)}&unidad=${encodeURIComponent(uni)}`;
-      const res = await fetch(url);
+      const res = await fetch(url, {mode:'cors'});
       const data = await res.json();
       if(data.ok && data.data){
         data.data.forEach(r=>{
-          plan[r.cod]={accion:r.accion||'Pendiente',fechaProg:r.fechaProg||'',obs:r.obs||''};
+          plan[r.cod]={accion:r.accion||'Pendiente',fechaProg:r.fechaProg?String(r.fechaProg).trim().substring(0,10):'',obs:String(r.obs||'')};
         });
+        showToast('Planificación cargada correctamente');
       }
     }
   } catch(e){ console.log('Sin conexión a Sheets, modo offline'); }
@@ -695,6 +715,19 @@ function launchApp(){
   }
 }
 
+async function cargarTodasLasPlanificaciones(){
+  if(SHEETS_URL==='REEMPLAZAR_CON_TU_URL_DE_APPS_SCRIPT') return;
+  try {
+    const url = SHEETS_URL+'?action=obtener_planificacion&gerencia=&unidad=';
+    const res = await fetch(url, {mode:'cors'});
+    const data = await res.json();
+    if(data.ok && data.data){
+      data.data.forEach(r=>{
+        plan[r.cod]={accion:r.accion||'Pendiente',fechaProg:r.fechaProg?String(r.fechaProg).trim().substring(0,10):'',obs:String(r.obs||'')};
+      });
+    }
+  } catch(e){ console.log('Error cargando todas las planificaciones:', e); }
+}
 function doLogout(){
   document.getElementById('screen-app').style.display='none';
   document.getElementById('screen-login').style.display='flex';
@@ -737,6 +770,7 @@ function updateUnitProg(){
   document.getElementById('unit-prog-pills').innerHTML=`
     <div class="pill"><div class="pill-dot" style="background:var(--blue)"></div>Actualizar: ${ac.filter(a=>a==='Actualizar').length}</div>
     <div class="pill"><div class="pill-dot" style="background:var(--green)"></div>Mantener: ${ac.filter(a=>a==='Mantener').length}</div>
+    <div class="pill"><div class="pill-dot" style="background:#e87722"></div>Transferir: ${ac.filter(a=>a==='Transferir').length}</div>
     <div class="pill"><div class="pill-dot" style="background:var(--red)"></div>Eliminar: ${ac.filter(a=>a==='Eliminar').length}</div>
     <div class="pill"><div class="pill-dot" style="background:#ccc"></div>Pendientes: ${pen}</div>`;
 }
@@ -761,9 +795,10 @@ function renderPlanTable(){
         <option value="Pendiente" ${p.accion==='Pendiente'?'selected':''}>— Pendiente</option>
         <option value="Actualizar" ${p.accion==='Actualizar'?'selected':''}>Actualizar</option>
         <option value="Mantener" ${p.accion==='Mantener'?'selected':''}>Mantener</option>
+        <option value="Transferir" ${p.accion==='Transferir'?'selected':''}>Transferir</option>
         <option value="Eliminar" ${p.accion==='Eliminar'?'selected':''}>Eliminar</option>
       </select></td>
-      <td><input type="date" class="date-input" value="${p.fechaProg}" onchange="setP('${d.cod}','fechaProg',this.value)"></td>
+      <td><input type="date" class="date-input" value="${p.accion==='Actualizar'?p.fechaProg:''}" ${p.accion!=='Actualizar'?'disabled style="background:#f0f3fb;cursor:not-allowed;opacity:0.5"':''} onchange="setP('${d.cod}','fechaProg',this.value)"></td>
       <td><input type="text" class="obs-input" value="${p.obs}" placeholder="Observación..." onchange="setP('${d.cod}','obs',this.value)"></td>
     </tr>`;
   }).join('');
@@ -772,7 +807,9 @@ function renderPlanTable(){
 function handleAccion(sel,cod){
   sel.className='accion-sel act-'+sel.value;
   setP(cod,'accion',sel.value);
+  if(sel.value!=='Actualizar') setP(cod,'fechaProg','');
   updateUnitProg(); updateHeroBadges();
+  renderPlanTable();
 }
 
 function marcarTodos(ac){
@@ -1019,11 +1056,18 @@ function renderResumen(){
   const funi=document.getElementById('r-sel-uni').value;
   const favance=document.getElementById('r-sel-avance').value;
   const fbus=document.getElementById('r-buscar').value.toLowerCase();
-  const allAc=DOCS.map(d=>getP(d.cod).accion);
-  document.getElementById('res-act').textContent=allAc.filter(a=>a==='Actualizar').length;
-  document.getElementById('res-man').textContent=allAc.filter(a=>a==='Mantener').length;
-  document.getElementById('res-eli').textContent=allAc.filter(a=>a==='Eliminar').length;
-  document.getElementById('res-nue').textContent=nuevos.length;
+  // Filter docs based on current filters for top cards
+  const fgerCards=document.getElementById('r-sel-ger').value;
+  const funiCards=document.getElementById('r-sel-uni').value;
+  let filteredDocs=DOCS;
+  if(fgerCards) filteredDocs=filteredDocs.filter(d=>d.gerencia===fgerCards);
+  if(funiCards) filteredDocs=filteredDocs.filter(d=>d.unidad===funiCards);
+  const filteredAc=filteredDocs.map(d=>getP(d.cod).accion);
+  const filteredNue=nuevos.filter(n=>(!fgerCards||n.gerencia===fgerCards)&&(!funiCards||n.unidad===funiCards));
+  document.getElementById('res-act').textContent=filteredAc.filter(a=>a==='Actualizar').length;
+  document.getElementById('res-man').textContent=filteredAc.filter(a=>a==='Mantener').length;
+  document.getElementById('res-eli').textContent=filteredAc.filter(a=>a==='Eliminar').length;
+  document.getElementById('res-nue').textContent=filteredNue.length;
   let rows='';
   getGers().forEach(g=>{
     if(fger&&g!==fger) return;
@@ -1034,6 +1078,7 @@ function renderResumen(){
       const ac=docs.map(d=>getP(d.cod).accion);
       const act=ac.filter(a=>a==='Actualizar').length;
       const man=ac.filter(a=>a==='Mantener').length;
+      const tra=ac.filter(a=>a==='Transferir').length;
       const eli=ac.filter(a=>a==='Eliminar').length;
       const pen=ac.filter(a=>a==='Pendiente').length;
       const nue=nuevos.filter(n=>n.gerencia===g&&n.unidad===u).length;
@@ -1048,6 +1093,7 @@ function renderResumen(){
         <td style="text-align:center;font-weight:700">${tot}</td>
         <td style="text-align:center;color:var(--blue);font-weight:${act?'700':'400'}">${act||'—'}</td>
         <td style="text-align:center;color:var(--green);font-weight:${man?'700':'400'}">${man||'—'}</td>
+        <td style="text-align:center;color:#e87722;font-weight:${tra?'700':'400'}">${tra||'—'}</td>
         <td style="text-align:center;color:var(--red);font-weight:${eli?'700':'400'}">${eli||'—'}</td>
         <td style="text-align:center;color:var(--purple);font-weight:${nue?'700':'400'}">${nue||'—'}</td>
         <td style="text-align:center;color:var(--text3)">${pen||'—'}</td>
@@ -1059,7 +1105,26 @@ function renderResumen(){
       </tr>`;
     });
   });
-  document.getElementById('resumen-tbody').innerHTML=rows||'<tr><td colspan="9" class="empty">Sin datos con estos filtros</td></tr>';
+  document.getElementById('resumen-tbody').innerHTML=rows||'<tr><td colspan="10" class="empty">Sin datos con estos filtros</td></tr>';
+  // Show nuevos docs section
+  renderNuevosResumen(fger, funi);
+}
+
+function renderNuevosResumen(fger, funi){
+  const nuevosFiltrados = nuevos.filter(n=>(!fger||n.gerencia===fger)&&(!funi||n.unidad===funi));
+  const sec = document.getElementById('nuevos-resumen-section');
+  if(!nuevosFiltrados.length){ if(sec) sec.style.display='none'; return; }
+  if(sec){ sec.style.display='block'; }
+  const tbody = document.getElementById('nuevos-resumen-tbody');
+  if(!tbody) return;
+  tbody.innerHTML = nuevosFiltrados.map(n=>`<tr>
+    <td style="font-size:11px;color:var(--text2)">${n.gerencia.replace('Gerencia de ','').replace('Gerencia ','')}</td>
+    <td style="font-size:12px">${n.unidad}</td>
+    <td style="font-size:12px;font-weight:600">${n.titulo}</td>
+    <td style="font-size:11px;color:var(--text2)">${n.tipo}</td>
+    <td style="font-size:11px">${n.fecha||'—'}</td>
+    <td style="font-size:11px;color:var(--text2)">${n.just||'—'}</td>
+  </tr>`).join('');
 }
 
 // SEGUIMIENTO
