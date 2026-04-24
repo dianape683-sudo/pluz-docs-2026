@@ -1427,59 +1427,6 @@ function renderSegCharts(){
     </div>`).join('');
 }
 
-function renderSeguimiento(){
-  const fger=document.getElementById('s-sel-ger').value;
-  const funi=document.getElementById('s-sel-uni').value;
-  const fest=document.getElementById('s-sel-estado').value;
-  const fflujo=document.getElementById('s-sel-flujo')?document.getElementById('s-sel-flujo').value:'';
-  const fbus=document.getElementById('s-buscar').value.toLowerCase();
-  let rows='', c={cumplido:0,proceso:0,vencido:0,sinfecha:0}, count=0;
-  DOCS.forEach(d=>{
-    if(fger&&d.gerencia!==fger) return;
-    if(funi&&d.unidad!==funi) return;
-    const p=getP(d.cod), rep=reporteActual[d.cod];
-    if(p.accion==='Pendiente') return;
-    const cum=getCumplimiento(p,rep); if(!cum) return;
-    c[cum]++;
-    if(fest&&fest!==cum) return;
-    const ea=rep?rep.ea:'—';
-    if(fflujo&&ea!==fflujo) return;
-    const resp=rep?rep.resp:'—';
-    if(fbus&&!d.desc.toLowerCase().includes(fbus)&&!resp.toLowerCase().includes(fbus)&&!d.cod.toLowerCase().includes(fbus)) return;
-    count++;
-    const semC={cumplido:'var(--green)',proceso:'var(--yellow)',vencido:'var(--red)',sinfecha:'#ccc'};
-    const semL={cumplido:'✅ Cumplido',proceso:'🟡 En proceso',vencido:'🔴 Vencido',sinfecha:'⚪ Sin fecha'};
-    const respCorto=resp.includes(',')?resp.split(',')[1].trim().split(' ')[0]+' '+resp.split(',')[0]:resp;
-    const eaColor=getEstadoColor(ea);
-    const fvActual=rep&&rep.fv?rep.fv:'—';
-    rows+=`<tr>
-      <td style="text-align:center"><span style="width:12px;height:12px;border-radius:50%;background:${semC[cum]};display:inline-block"></span></td>
-      <td style="font-family:monospace;font-size:10px;color:var(--text2)">${d.cod}</td>
-      <td style="font-size:11px">${d.desc.length>50?d.desc.slice(0,48)+'…':d.desc}</td>
-      <td style="font-size:10px;color:var(--text2)">${d.unidad.length>18?d.unidad.slice(0,16)+'…':d.unidad}</td>
-      <td><span class="badge" style="background:${COLORS[p.accion]}22;color:${COLORS[p.accion]}">${p.accion}</span></td>
-      <td style="font-size:11px">${p.fechaProg||'—'}</td>
-      <td><span style="font-size:10px;font-weight:600;color:${eaColor};background:${eaColor}18;padding:2px 6px;border-radius:10px;white-space:nowrap">${ea.length>16?ea.slice(0,14)+'…':ea}</span></td>
-      <td style="font-size:10px;color:var(--text2)">${respCorto.length>16?respCorto.slice(0,14)+'…':respCorto}</td>
-      <td><span style="font-size:11px;font-weight:700;color:${semC[cum]}">${semL[cum]}</span></td>
-    </tr>`;
-  });
-  document.getElementById('seg-tbody').innerHTML=rows||'<tr><td colspan="9" class="empty">No hay documentos con estos filtros</td></tr>';
-  const tc=document.getElementById('seg-table-count'); if(tc) tc.textContent=count+' documentos';
-  document.getElementById('seg-k-cumplido').textContent=c.cumplido;
-  document.getElementById('seg-k-proceso').textContent=c.proceso;
-  document.getElementById('seg-k-vencido').textContent=c.vencido;
-  document.getElementById('seg-k-sinfecha').textContent=c.sinfecha;
-  renderSegCharts();
-}
-
-function onSegGerChange(){
-  const ger=document.getElementById('s-sel-ger').value;
-  const su=document.getElementById('s-sel-uni');
-  su.innerHTML='<option value="">Todas las unidades</option>';
-  if(ger) getUnis(ger).forEach(u=>{const o=document.createElement('option');o.value=u;o.textContent=u;su.appendChild(o);});
-  renderSeguimiento();
-}
 
 function showSaving(msg='Guardando...'){
   const s=document.getElementById('saving-overlay');
