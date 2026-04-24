@@ -261,6 +261,17 @@ td{padding:7px 10px;font-size:12px;vertical-align:middle}
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-admin">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-title">Acceso administrador QA</div>
+    <p>Ingresa la clave para acceder al panel completo.</p>
+    <div class="fgrp"><label>Clave</label>
+      <input type="password" id="admin-pwd" placeholder="••••••" onkeydown="if(event.key==='Enter')doAdmin()"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('modal-admin')">Cancelar</button>
+      <button class="btn btn-blue" onclick="doAdmin()">Ingresar</button>
+    </div>
+
 <!-- APP -->
 <div id="screen-app">
   <nav>
@@ -655,16 +666,7 @@ td{padding:7px 10px;font-size:12px;vertical-align:middle}
 </div>
 
 <!-- MODAL ADMIN -->
-<div class="modal-overlay" id="modal-admin">
-  <div class="modal" style="max-width:360px">
-    <div class="modal-title">Acceso administrador QA</div>
-    <p>Ingresa la clave para acceder al panel completo.</p>
-    <div class="fgrp"><label>Clave</label>
-      <input type="password" id="admin-pwd" placeholder="••••••" onkeydown="if(event.key==='Enter')doAdmin()"></div>
-    <div class="modal-actions">
-      <button class="btn" onclick="closeModal('modal-admin')">Cancelar</button>
-      <button class="btn btn-blue" onclick="doAdmin()">Ingresar</button>
-    </div>
+
   </div>
 </div>
 
