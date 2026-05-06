@@ -694,7 +694,7 @@ async function cargarPlanDesdeSheets(ger, uni){
   try {
     if(SHEETS_URL !== 'REEMPLAZAR_CON_TU_URL_DE_APPS_SCRIPT'){
       const url = `${SHEETS_URL}?action=obtener_planificacion&gerencia=${encodeURIComponent(ger)}&unidad=${encodeURIComponent(uni)}`;
-      const res = await fetch(url);
+      const res = await fetch(url, {mode:'cors'});
       const data = await res.json();
       if(data.ok && data.data){
         data.data.forEach(r=>{
@@ -827,11 +827,15 @@ async function guardarPlanificacion(){
   try {
     await fetch(SHEETS_URL, {
       method:'POST',
+      mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
       body: JSON.stringify({action:'guardar_planificacion',gerencia:CUR_GER,unidad:CUR_UNI,rows})
     });
     for(const n of nvsUnit){
       await fetch(SHEETS_URL, {
         method:'POST',
+        mode:'no-cors',
+        headers:{'Content-Type':'application/json'},
         body: JSON.stringify({action:'guardar_nuevo',gerencia:CUR_GER,unidad:CUR_UNI,...n})
       });
     }
